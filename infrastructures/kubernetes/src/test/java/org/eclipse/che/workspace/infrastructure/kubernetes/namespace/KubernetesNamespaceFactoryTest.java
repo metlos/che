@@ -34,6 +34,7 @@ import io.fabric8.kubernetes.client.dsl.NonNamespaceOperation;
 import io.fabric8.kubernetes.client.dsl.Resource;
 import java.util.List;
 import org.eclipse.che.commons.subject.SubjectImpl;
+import org.eclipse.che.inject.ConfigurationException;
 import org.eclipse.che.workspace.infrastructure.kubernetes.KubernetesClientFactory;
 import org.eclipse.che.workspace.infrastructure.kubernetes.api.shared.KubernetesNamespaceMeta;
 import org.mockito.Mock;
@@ -53,6 +54,18 @@ public class KubernetesNamespaceFactoryTest {
   @Mock private KubernetesClient k8sClient;
 
   private KubernetesNamespaceFactory namespaceFactory;
+
+  @Test(
+      expectedExceptions = ConfigurationException.class,
+      expectedExceptionsMessageRegExp =
+          "che.infra.kubernetes.namespace.default or "
+              + "che.infra.kubernetes.namespace.allow_user_defined must be configured")
+  public void
+      shouldThrowExceptionIfNoDefaultNamespaceIsConfiguredAndUserDefinedNamespacesAreNotAllowed()
+          throws Exception {
+    namespaceFactory =
+        new KubernetesNamespaceFactory("predefined", "", "", null, false, clientFactory);
+  }
 
   @Test
   public void shouldReturnDefaultNamespaceOnlyWhenItExistsAndUserDefinedIsNotAllowed()

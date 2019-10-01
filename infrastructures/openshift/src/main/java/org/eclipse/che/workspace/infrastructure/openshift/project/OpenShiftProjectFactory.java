@@ -13,7 +13,6 @@ package org.eclipse.che.workspace.infrastructure.openshift.project;
 
 import static com.google.common.base.Strings.isNullOrEmpty;
 import static java.util.Collections.singletonList;
-import static java.util.stream.Collectors.toCollection;
 import static org.eclipse.che.workspace.infrastructure.kubernetes.api.shared.KubernetesNamespaceMeta.DEFAULT_ATTRIBUTE;
 
 import com.google.common.annotations.VisibleForTesting;
@@ -21,11 +20,11 @@ import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import io.fabric8.kubernetes.api.model.ObjectMeta;
 import io.fabric8.openshift.api.model.Project;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 import javax.inject.Named;
 import org.eclipse.che.api.workspace.server.spi.InfrastructureException;
 import org.eclipse.che.commons.annotation.Nullable;
@@ -57,7 +56,7 @@ public class OpenShiftProjectFactory extends KubernetesNamespaceFactory {
       @Nullable @Named("che.infra.openshift.project") String projectName,
       @Nullable @Named("che.infra.kubernetes.service_account_name") String serviceAccountName,
       @Nullable @Named("che.infra.kubernetes.cluster_role_name") String clusterRoleName,
-      @Named("che.infra.kubernetes.namespace.default") String defaultNamespaceName,
+      @Nullable @Named("che.infra.kubernetes.namespace.default") String defaultNamespaceName,
       @Named("che.infra.kubernetes.namespace.allow_user_defined")
           boolean allowUserDefinedNamespaces,
       OpenShiftClientFactory clientFactory,
@@ -83,7 +82,9 @@ public class OpenShiftProjectFactory extends KubernetesNamespaceFactory {
   public List<KubernetesNamespaceMeta> list() throws InfrastructureException {
     if (!allowUserDefinedNamespaces) {
       // return only default project if user defined are not allowed
-      String evaluatedName = evalDefaultNamespaceName(EnvironmentContext.getCurrent().getSubject());
+      String evaluatedName =
+          evalDefaultNamespaceName(
+              defaultNamespaceName, EnvironmentContext.getCurrent().getSubject());
 
       Project project = clientFactory.createOC().projects().withName(evaluatedName).get();
 
@@ -109,11 +110,13 @@ public class OpenShiftProjectFactory extends KubernetesNamespaceFactory {
             .getItems()
             .stream()
             .map(this::asNamespaceMeta)
-            .collect(toCollection(ArrayList::new));
+            .collect(Collectors.toList());
 
     // propagate default namespace if it's configured
     if (!isNullOrEmpty(defaultNamespaceName)) {
-      String evaluatedName = evalDefaultNamespaceName(EnvironmentContext.getCurrent().getSubject());
+      String evaluatedName =
+          evalDefaultNamespaceName(
+              defaultNamespaceName, EnvironmentContext.getCurrent().getSubject());
 
       Optional<KubernetesNamespaceMeta> defaultNamespaceOpt =
           projects.stream().filter(n -> evaluatedName.equals(n.getName())).findAny();

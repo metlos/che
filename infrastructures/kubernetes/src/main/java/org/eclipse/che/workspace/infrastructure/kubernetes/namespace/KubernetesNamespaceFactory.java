@@ -11,9 +11,9 @@
  */
 package org.eclipse.che.workspace.infrastructure.kubernetes.namespace;
 
+import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Strings.isNullOrEmpty;
 import static java.util.Collections.singletonList;
-import static java.util.stream.Collectors.toCollection;
 import static org.eclipse.che.workspace.infrastructure.kubernetes.api.shared.KubernetesNamespaceMeta.DEFAULT_ATTRIBUTE;
 import static org.eclipse.che.workspace.infrastructure.kubernetes.api.shared.KubernetesNamespaceMeta.PHASE_ATTRIBUTE;
 
@@ -21,12 +21,13 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import io.fabric8.kubernetes.api.model.Namespace;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Optional;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 import javax.inject.Named;
 import org.eclipse.che.api.workspace.server.spi.InfrastructureException;
 import org.eclipse.che.commons.annotation.Nullable;
@@ -67,7 +68,7 @@ public class KubernetesNamespaceFactory {
       @Nullable @Named("che.infra.kubernetes.namespace") String namespaceName,
       @Nullable @Named("che.infra.kubernetes.service_account_name") String serviceAccountName,
       @Nullable @Named("che.infra.kubernetes.cluster_role_name") String clusterRoleName,
-      @Named("che.infra.kubernetes.namespace.default") String defaultNamespaceName,
+      @Nullable @Named("che.infra.kubernetes.namespace.default") String defaultNamespaceName,
       @Named("che.infra.kubernetes.namespace.allow_user_defined")
           boolean allowUserDefinedNamespaces,
       KubernetesClientFactory clientFactory)
@@ -101,8 +102,11 @@ public class KubernetesNamespaceFactory {
   /** Returns list of k8s namespaces names where a user is able to run workspaces. */
   public List<KubernetesNamespaceMeta> list() throws InfrastructureException {
     if (!allowUserDefinedNamespaces) {
-      // return only default namespace if user defined are not allowed
-      String evaluatedName = evalDefaultNamespaceName(EnvironmentContext.getCurrent().getSubject());
+      // the default namespace must be configured if user defined are not allowed
+      // so return only it
+      String evaluatedName =
+          evalDefaultNamespaceName(
+              defaultNamespaceName, EnvironmentContext.getCurrent().getSubject());
 
       Namespace namespace = clientFactory.create().namespaces().withName(evaluatedName).get();
 
@@ -128,19 +132,25 @@ public class KubernetesNamespaceFactory {
             .getItems()
             .stream()
             .map(this::asNamespaceMeta)
-            .collect(toCollection(ArrayList::new));
+            .collect(Collectors.toList());
 
     // propagate default namespace if it's configured
-    if (!isNullOrEmpty(defaultNamespaceName)) {
-      String evaluatedName = evalDefaultNamespaceName(EnvironmentContext.getCurrent().getSubject());
+    if (isNullOrEmpty(defaultNamespaceName)) {
+      String evaluatedName =
+          evalDefaultNamespaceName(
+              defaultNamespaceName, EnvironmentContext.getCurrent().getSubject());
 
       Optional<KubernetesNamespaceMeta> defaultNamespaceOpt =
           namespaces.stream().filter(n -> evaluatedName.equals(n.getName())).findAny();
+      KubernetesNamespaceMeta defaultNamespace;
       if (defaultNamespaceOpt.isPresent()) {
-        defaultNamespaceOpt.get().getAttributes().put(DEFAULT_ATTRIBUTE, "true");
+        defaultNamespace = defaultNamespaceOpt.get();
       } else {
-        namespaces.add(new KubernetesNamespaceMetaImpl(evaluatedName));
+        defaultNamespace = new KubernetesNamespaceMetaImpl(evaluatedName);
+        namespaces.add(defaultNamespace);
       }
+
+      defaultNamespace.getAttributes().put(DEFAULT_ATTRIBUTE, "true");
     }
     return namespaces;
   }
@@ -195,21 +205,15 @@ public class KubernetesNamespaceFactory {
     }
   }
 
-  protected String evalDefaultNamespaceName(Subject currentUser) {
-    boolean isDefaultPredefined =
-        !isNullOrEmpty(defaultNamespaceName) && hasNoPlaceholders(this.defaultNamespaceName);
-
-    if (isDefaultPredefined) {
-      return this.defaultNamespaceName;
-    } else {
-      String tmpNamespaceName = this.defaultNamespaceName;
-      for (String placeholder : NAMESPACE_NAME_PLACEHOLDERS.keySet()) {
-        tmpNamespaceName =
-            tmpNamespaceName.replaceAll(
-                placeholder, NAMESPACE_NAME_PLACEHOLDERS.get(placeholder).apply(currentUser));
-      }
-      return tmpNamespaceName;
+  protected String evalDefaultNamespaceName(String defaultNamespace, Subject currentUser) {
+    checkArgument(!isNullOrEmpty(defaultNamespace));
+    String evaluated = defaultNamespace;
+    for (Entry<String, Function<Subject, String>> placeHolder :
+        NAMESPACE_NAME_PLACEHOLDERS.entrySet()) {
+      evaluated =
+          evaluated.replaceAll(placeHolder.getKey(), placeHolder.getValue().apply(currentUser));
     }
+    return evaluated;
   }
 
   /**
