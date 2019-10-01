@@ -14,6 +14,7 @@ package org.eclipse.che.workspace.infrastructure.openshift.project;
 import static com.google.common.base.Strings.isNullOrEmpty;
 import static java.util.Collections.singletonList;
 import static org.eclipse.che.workspace.infrastructure.kubernetes.api.shared.KubernetesNamespaceMeta.DEFAULT_ATTRIBUTE;
+import static org.eclipse.che.workspace.infrastructure.kubernetes.api.shared.KubernetesNamespaceMeta.PHASE_ATTRIBUTE;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.inject.Inject;
@@ -96,7 +97,8 @@ public class OpenShiftProjectFactory extends KubernetesNamespaceFactory {
           // 403 means that the project does not exist
           // or a user really is not permitted to access it which is Che Server misconfiguration
           //
-          // return dummy info and Che Server will try to create such project during the first workspace start
+          // So return dummy info and Che Server will try to create such project during the first
+          // workspace start
           defaultNamespace = new KubernetesNamespaceMetaImpl(evaluatedName);
         } else {
           throw new InfrastructureException(e.getMessage(), e);
@@ -108,7 +110,7 @@ public class OpenShiftProjectFactory extends KubernetesNamespaceFactory {
     }
 
     // if user defined namespaces are allowed - fetch all available
-    List<KubernetesNamespaceMeta> projects =
+    List<KubernetesNamespaceMeta> namespaces =
         clientFactory
             .createOC()
             .projects()
@@ -125,14 +127,17 @@ public class OpenShiftProjectFactory extends KubernetesNamespaceFactory {
               defaultNamespaceName, EnvironmentContext.getCurrent().getSubject());
 
       Optional<KubernetesNamespaceMeta> defaultNamespaceOpt =
-          projects.stream().filter(n -> evaluatedName.equals(n.getName())).findAny();
+          namespaces.stream().filter(n -> evaluatedName.equals(n.getName())).findAny();
+      KubernetesNamespaceMeta defaultNamespace;
       if (defaultNamespaceOpt.isPresent()) {
-        defaultNamespaceOpt.get().getAttributes().put(DEFAULT_ATTRIBUTE, "true");
+        defaultNamespace = defaultNamespaceOpt.get();
       } else {
-        projects.add(new KubernetesNamespaceMetaImpl(evaluatedName));
+        defaultNamespace = new KubernetesNamespaceMetaImpl(evaluatedName);
+        namespaces.add(defaultNamespace);
       }
+      defaultNamespace.getAttributes().put(DEFAULT_ATTRIBUTE, "true");
     }
-    return projects;
+    return namespaces;
   }
 
   /**
@@ -199,6 +204,9 @@ public class OpenShiftProjectFactory extends KubernetesNamespaceFactory {
       attributes.put(Constants.PROJECT_DESCRIPTION_ATTRIBUTE, description);
     }
 
+    if (project.getStatus() != null && project.getStatus().getPhase() != null) {
+      attributes.put(PHASE_ATTRIBUTE, project.getStatus().getPhase());
+    }
     return new KubernetesNamespaceMetaImpl(metadata.getName(), attributes);
   }
 }

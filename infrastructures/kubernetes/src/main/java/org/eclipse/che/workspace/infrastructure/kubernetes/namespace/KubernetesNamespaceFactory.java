@@ -157,7 +157,9 @@ public class KubernetesNamespaceFactory {
 
   private KubernetesNamespaceMeta asNamespaceMeta(Namespace namespace) {
     Map<String, String> attributes = new HashMap<>();
-    attributes.put(PHASE_ATTRIBUTE, namespace.getStatus().getPhase());
+    if (namespace.getStatus() != null && namespace.getStatus().getPhase() != null) {
+      attributes.put(PHASE_ATTRIBUTE, namespace.getStatus().getPhase());
+    }
     return new KubernetesNamespaceMetaImpl(namespace.getMetadata().getName(), attributes);
   }
 
