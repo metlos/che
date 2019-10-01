@@ -101,6 +101,7 @@ public class OpenShiftProjectFactory extends KubernetesNamespaceFactory {
           // workspace start
           defaultNamespace = new KubernetesNamespaceMetaImpl(evaluatedName);
         } else {
+          // TODO Cover this case with test
           throw new InfrastructureException(e.getMessage(), e);
         }
       }

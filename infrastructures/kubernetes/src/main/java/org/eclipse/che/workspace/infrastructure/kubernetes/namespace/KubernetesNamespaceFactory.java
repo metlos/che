@@ -21,6 +21,7 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import io.fabric8.kubernetes.api.model.Namespace;
+import io.fabric8.kubernetes.client.KubernetesClientException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -108,7 +109,14 @@ public class KubernetesNamespaceFactory {
           evalDefaultNamespaceName(
               defaultNamespaceName, EnvironmentContext.getCurrent().getSubject());
 
-      Namespace namespace = clientFactory.create().namespaces().withName(evaluatedName).get();
+      Namespace namespace;
+      try {
+        namespace = clientFactory.create().namespaces().withName(evaluatedName).get();
+      } catch (KubernetesClientException e) {
+        // TODO Cover with test
+        throw new InfrastructureException(
+            "Error occurred when tried to fetch default namespace. Cause: " + e.getMessage(), e);
+      }
 
       KubernetesNamespaceMeta defaultNamespace;
       if (namespace == null) {
@@ -124,15 +132,23 @@ public class KubernetesNamespaceFactory {
     }
 
     // if user defined namespaces are allowed - fetch all available
-    List<KubernetesNamespaceMeta> namespaces =
-        clientFactory
-            .create()
-            .namespaces()
-            .list()
-            .getItems()
-            .stream()
-            .map(this::asNamespaceMeta)
-            .collect(Collectors.toList());
+    List<KubernetesNamespaceMeta> namespaces;
+    try {
+      namespaces =
+          clientFactory
+              .create()
+              .namespaces()
+              .list()
+              .getItems()
+              .stream()
+              .map(this::asNamespaceMeta)
+              .collect(Collectors.toList());
+    } catch (KubernetesClientException e) {
+      // TODO Cover with test
+      throw new InfrastructureException(
+          "Error occurred when tried to list all available namespaces. Cause: " + e.getMessage(),
+          e);
+    }
 
     // propagate default namespace if it's configured
     if (!isNullOrEmpty(defaultNamespaceName)) {
