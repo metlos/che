@@ -12,9 +12,11 @@
 package org.eclipse.che.workspace.infrastructure.kubernetes.api.shared.dto;
 
 import java.util.Map;
+import org.eclipse.che.dto.shared.DTO;
 import org.eclipse.che.workspace.infrastructure.kubernetes.api.shared.KubernetesNamespaceMeta;
 
 /** @author Sergii Leshchenko */
+@DTO
 public interface KubernetesNamespaceMetaDto extends KubernetesNamespaceMeta {
   @Override
   String getName();

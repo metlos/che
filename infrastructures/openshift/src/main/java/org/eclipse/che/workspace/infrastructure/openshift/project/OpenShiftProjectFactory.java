@@ -19,6 +19,7 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import io.fabric8.kubernetes.api.model.ObjectMeta;
+import io.fabric8.kubernetes.client.KubernetesClientException;
 import io.fabric8.openshift.api.model.Project;
 import java.util.HashMap;
 import java.util.List;
@@ -86,15 +87,20 @@ public class OpenShiftProjectFactory extends KubernetesNamespaceFactory {
           evalDefaultNamespaceName(
               defaultNamespaceName, EnvironmentContext.getCurrent().getSubject());
 
-      Project project = clientFactory.createOC().projects().withName(evaluatedName).get();
-
       KubernetesNamespaceMeta defaultNamespace;
-      if (project == null) {
-        // if the predefined project does not exist - return dummy info and it will be created
-        // during the first workspace start
-        defaultNamespace = new KubernetesNamespaceMetaImpl(evaluatedName);
-      } else {
+      try {
+        Project project = clientFactory.createOC().projects().withName(evaluatedName).get();
         defaultNamespace = asNamespaceMeta(project);
+      } catch (KubernetesClientException e) {
+        if (e.getCode() == 403) {
+          // 403 means that the project does not exist
+          // or a user really is not permitted to access it which is Che Server misconfiguration
+          //
+          // return dummy info and Che Server will try to create such project during the first workspace start
+          defaultNamespace = new KubernetesNamespaceMetaImpl(evaluatedName);
+        } else {
+          throw new InfrastructureException(e.getMessage(), e);
+        }
       }
 
       defaultNamespace.getAttributes().put(DEFAULT_ATTRIBUTE, "true");
