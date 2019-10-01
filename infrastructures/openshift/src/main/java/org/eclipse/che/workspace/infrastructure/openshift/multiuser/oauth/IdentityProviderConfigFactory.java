@@ -128,7 +128,8 @@ public class IdentityProviderConfigFactory extends OpenShiftClientConfigFactory 
     }
 
     if (subject == Subject.ANONYMOUS) {
-      LOG.debug("OAuth Provider is not configured, default config is used.");
+      LOG.debug(
+          "OAuth Provider is configured but default subject is anonymous, default config is used.");
       return defaultConfig;
     }
 
