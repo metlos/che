@@ -135,7 +135,7 @@ public class KubernetesNamespaceFactory {
             .collect(Collectors.toList());
 
     // propagate default namespace if it's configured
-    if (isNullOrEmpty(defaultNamespaceName)) {
+    if (!isNullOrEmpty(defaultNamespaceName)) {
       String evaluatedName =
           evalDefaultNamespaceName(
               defaultNamespaceName, EnvironmentContext.getCurrent().getSubject());

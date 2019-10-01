@@ -11,6 +11,7 @@
  */
 package org.eclipse.che.workspace.infrastructure.kubernetes.namespace;
 
+import static java.util.Collections.singletonList;
 import static org.eclipse.che.workspace.infrastructure.kubernetes.api.shared.KubernetesNamespaceMeta.DEFAULT_ATTRIBUTE;
 import static org.eclipse.che.workspace.infrastructure.kubernetes.api.shared.KubernetesNamespaceMeta.PHASE_ATTRIBUTE;
 import static org.mockito.ArgumentMatchers.any;
@@ -32,6 +33,7 @@ import io.fabric8.kubernetes.api.model.NamespaceList;
 import io.fabric8.kubernetes.client.KubernetesClient;
 import io.fabric8.kubernetes.client.dsl.NonNamespaceOperation;
 import io.fabric8.kubernetes.client.dsl.Resource;
+import java.util.Arrays;
 import java.util.List;
 import org.eclipse.che.commons.subject.SubjectImpl;
 import org.eclipse.che.inject.ConfigurationException;
@@ -76,7 +78,7 @@ public class KubernetesNamespaceFactoryTest {
             .withNewMetadata()
             .withName("che-default")
             .endMetadata()
-            .withNewStatus("Running")
+            .withNewStatus("Active")
             .build());
     namespaceFactory =
         new KubernetesNamespaceFactory("predefined", "", "", "che-default", false, clientFactory);
@@ -86,7 +88,7 @@ public class KubernetesNamespaceFactoryTest {
     KubernetesNamespaceMeta defaultNamespace = availableNamespaces.get(0);
     assertEquals(defaultNamespace.getName(), "che-default");
     assertEquals(defaultNamespace.getAttributes().get(DEFAULT_ATTRIBUTE), "true");
-    assertEquals(defaultNamespace.getAttributes().get(PHASE_ATTRIBUTE), "Running");
+    assertEquals(defaultNamespace.getAttributes().get(PHASE_ATTRIBUTE), "Active");
   }
 
   @Test
@@ -109,19 +111,73 @@ public class KubernetesNamespaceFactoryTest {
   }
 
   @Test
-  public void shouldReturnListOfExistingNamespacesIfUserDefinedIsAllowed() {
-    // TODO Implement me before merging
+  public void shouldReturnListOfExistingNamespacesIfUserDefinedIsAllowed() throws Exception {
+    prepareListedNamespaces(
+        Arrays.asList(
+            createNamespace("my-for-ws", "Active"),
+            createNamespace("experimental", "Terminating")));
+
+    namespaceFactory =
+        new KubernetesNamespaceFactory("predefined", "", "", null, true, clientFactory);
+
+    List<KubernetesNamespaceMeta> availableNamespaces = namespaceFactory.list();
+    assertEquals(availableNamespaces.size(), 2);
+    KubernetesNamespaceMeta forWS = availableNamespaces.get(0);
+    assertEquals(forWS.getName(), "my-for-ws");
+    assertEquals(forWS.getAttributes().get(PHASE_ATTRIBUTE), "Active");
+
+    KubernetesNamespaceMeta experimental = availableNamespaces.get(1);
+    assertEquals(experimental.getName(), "experimental");
+    assertEquals(experimental.getAttributes().get(PHASE_ATTRIBUTE), "Terminating");
   }
 
   @Test
-  public void shouldReturnListOfExistingNamespacesAlongWithDefaultIfUserDefinedIsAllowed() {
-    // TODO Implement me before merging
+  public void shouldReturnListOfExistingNamespacesAlongWithDefaultIfUserDefinedIsAllowed()
+      throws Exception {
+    prepareListedNamespaces(
+        Arrays.asList(
+            createNamespace("my-for-ws", "Active"), createNamespace("default", "Active")));
+
+    namespaceFactory =
+        new KubernetesNamespaceFactory("predefined", "", "", "default", true, clientFactory);
+
+    List<KubernetesNamespaceMeta> availableNamespaces = namespaceFactory.list();
+
+    assertEquals(availableNamespaces.size(), 2);
+    KubernetesNamespaceMeta forWS = availableNamespaces.get(0);
+    assertEquals(forWS.getName(), "my-for-ws");
+    assertEquals(forWS.getAttributes().get(PHASE_ATTRIBUTE), "Active");
+    assertNull(forWS.getAttributes().get(DEFAULT_ATTRIBUTE));
+
+    KubernetesNamespaceMeta defaultNamespace = availableNamespaces.get(1);
+    assertEquals(defaultNamespace.getName(), "default");
+    assertEquals(defaultNamespace.getAttributes().get(PHASE_ATTRIBUTE), "Active");
+    assertEquals(defaultNamespace.getAttributes().get(DEFAULT_ATTRIBUTE), "true");
   }
 
   @Test
   public void
-      shouldReturnListOfExistingNamespacesAlongWithNonExistingDefaultIfUserDefinedIsAllowed() {
-    // TODO Implement me before merging
+      shouldReturnListOfExistingNamespacesAlongWithNonExistingDefaultIfUserDefinedIsAllowed()
+          throws Exception {
+    prepareListedNamespaces(singletonList(createNamespace("my-for-ws", "Active")));
+
+    namespaceFactory =
+        new KubernetesNamespaceFactory("predefined", "", "", "default", true, clientFactory);
+
+    List<KubernetesNamespaceMeta> availableNamespaces = namespaceFactory.list();
+    assertEquals(availableNamespaces.size(), 2);
+    KubernetesNamespaceMeta forWS = availableNamespaces.get(0);
+    assertEquals(forWS.getName(), "my-for-ws");
+    assertEquals(forWS.getAttributes().get(PHASE_ATTRIBUTE), "Active");
+    assertNull(forWS.getAttributes().get(DEFAULT_ATTRIBUTE));
+
+    KubernetesNamespaceMeta defaultNamespace = availableNamespaces.get(1);
+    assertEquals(defaultNamespace.getName(), "default");
+    assertEquals(defaultNamespace.getAttributes().get(DEFAULT_ATTRIBUTE), "true");
+    assertNull(
+        defaultNamespace
+            .getAttributes()
+            .get(PHASE_ATTRIBUTE)); // no phase - means such namespace does not exist
   }
 
   @Test
@@ -291,6 +347,22 @@ public class KubernetesNamespaceFactoryTest {
     assertEquals(namespace, "blabol-123-JonDoe-123-JonDoe--");
   }
 
+  private void prepareListedNamespaces(List<Namespace> namespaces) throws Exception {
+    when(clientFactory.create()).thenReturn(k8sClient);
+
+    @SuppressWarnings("unchecked")
+    NonNamespaceOperation<
+            Namespace, NamespaceList, DoneableNamespace, Resource<Namespace, DoneableNamespace>>
+        namespaceOperation = mock(NonNamespaceOperation.class);
+    when(k8sClient.namespaces()).thenReturn(namespaceOperation);
+
+    @SuppressWarnings("unchecked")
+    NamespaceList namespaceListOp = mock(NamespaceList.class);
+    when(namespaceOperation.list()).thenReturn(namespaceListOp);
+
+    when(namespaceListOp.getItems()).thenReturn(namespaces);
+  }
+
   private void prepareNamespaceToBeFoundByName(String name, Namespace namespace) throws Exception {
     when(clientFactory.create()).thenReturn(k8sClient);
 
@@ -305,5 +377,14 @@ public class KubernetesNamespaceFactoryTest {
     when(namespaceOperation.withName(name)).thenReturn(getNamespaceByNameOperation);
 
     when(getNamespaceByNameOperation.get()).thenReturn(namespace);
+  }
+
+  private Namespace createNamespace(String name, String phase) {
+    return new NamespaceBuilder()
+        .withNewMetadata()
+        .withName(name)
+        .endMetadata()
+        .withNewStatus(phase)
+        .build();
   }
 }

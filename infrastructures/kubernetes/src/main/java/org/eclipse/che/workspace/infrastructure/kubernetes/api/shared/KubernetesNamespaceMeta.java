@@ -27,7 +27,7 @@ public interface KubernetesNamespaceMeta {
   String DEFAULT_ATTRIBUTE = "default";
 
   /**
-   * Attributes that contains information about current namespace status. Example values: Running,
+   * Attributes that contains information about current namespace status. Example values: Active,
    * Terminating. Absent value indicates that namespace is not created yet.
    */
   String PHASE_ATTRIBUTE = "phase";
