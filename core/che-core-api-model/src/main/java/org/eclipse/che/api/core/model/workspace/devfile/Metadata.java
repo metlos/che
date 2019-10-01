@@ -19,4 +19,7 @@ public interface Metadata {
 
   /** 'generateName' is used as a base string for generated name, when 'name' is not defined. */
   String getGenerateName();
+
+  /** The namespace where the workspaces created from the devfile will be placed. */
+  String getNamespace();
 }

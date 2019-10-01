@@ -59,6 +59,10 @@
           "examples": [
             "petclinic-"
           ]
+        },
+        "namespace": {
+          "type": "string",
+          "description": "The Kubernetes namespace or OpenShift project in which a workspace of this devfile should be created in."
         }
       },
       "additionalProperties": false,

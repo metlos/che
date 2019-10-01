@@ -25,4 +25,6 @@ public interface MetadataDto extends Metadata {
   MetadataDto withName(String name);
 
   MetadataDto withGenerateName(String generateName);
+
+  MetadataDto withNamespace(String namespace);
 }

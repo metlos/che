@@ -23,6 +23,9 @@ public class MetadataImpl implements Metadata {
   @Column(name = "meta_name")
   private String name;
 
+  @Column(name = "namespace")
+  private String namespace;
+
   /**
    * generateName is used just at workspace create time, when name is generated from it and stored
    * into {@link MetadataImpl#name}, thus it's not needed to persist
@@ -59,6 +62,15 @@ public class MetadataImpl implements Metadata {
   }
 
   @Override
+  public String getNamespace() {
+    return namespace;
+  }
+
+  public void setNamespace(String namespace) {
+    this.namespace = namespace;
+  }
+
+  @Override
   public boolean equals(Object o) {
     if (this == o) {
       return true;
@@ -68,12 +80,13 @@ public class MetadataImpl implements Metadata {
     }
     MetadataImpl metadata = (MetadataImpl) o;
     return Objects.equals(name, metadata.name)
-        && Objects.equals(generateName, metadata.generateName);
+        && Objects.equals(generateName, metadata.generateName)
+        && Objects.equals(namespace, metadata.namespace);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(name, generateName);
+    return Objects.hash(name, generateName, namespace);
   }
 
   @Override
@@ -84,6 +97,9 @@ public class MetadataImpl implements Metadata {
         + '\''
         + ", generateName='"
         + generateName
+        + '\''
+        + ", namespace='"
+        + namespace
         + '\''
         + '}';
   }
