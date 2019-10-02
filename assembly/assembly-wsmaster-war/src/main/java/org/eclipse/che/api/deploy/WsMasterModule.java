@@ -54,6 +54,7 @@ import org.eclipse.che.api.workspace.server.spi.provision.env.CheApiExternalEnvV
 import org.eclipse.che.api.workspace.server.spi.provision.env.CheApiInternalEnvVarProvider;
 import org.eclipse.che.api.workspace.server.spi.provision.env.EnvVarEnvironmentProvisioner;
 import org.eclipse.che.api.workspace.server.spi.provision.env.EnvVarProvider;
+import org.eclipse.che.api.workspace.server.spi.provision.env.InfrastructureNamespaceEnvVarProvider;
 import org.eclipse.che.api.workspace.server.spi.provision.env.JavaOptsEnvVariableProvider;
 import org.eclipse.che.api.workspace.server.spi.provision.env.LegacyEnvVarProvider;
 import org.eclipse.che.api.workspace.server.spi.provision.env.MachineTokenEnvVarProvider;
@@ -167,6 +168,7 @@ public class WsMasterModule extends AbstractModule {
     envVarProviders.addBinding().to(WorkspaceNamespaceNameEnvVarProvider.class);
     envVarProviders.addBinding().to(WorkspaceNameEnvVarProvider.class);
     envVarProviders.addBinding().to(ProjectsRootEnvVariableProvider.class);
+    envVarProviders.addBinding().to(InfrastructureNamespaceEnvVarProvider.class);
 
     Multibinder<LegacyEnvVarProvider> legacyEnvVarProviderMultibinders =
         Multibinder.newSetBinder(binder(), LegacyEnvVarProvider.class);

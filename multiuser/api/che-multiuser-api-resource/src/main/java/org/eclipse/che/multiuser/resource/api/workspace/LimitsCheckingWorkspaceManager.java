@@ -38,6 +38,7 @@ import org.eclipse.che.api.workspace.server.WorkspaceValidator;
 import org.eclipse.che.api.workspace.server.devfile.validator.DevfileIntegrityValidator;
 import org.eclipse.che.api.workspace.server.model.impl.WorkspaceConfigImpl;
 import org.eclipse.che.api.workspace.server.model.impl.WorkspaceImpl;
+import org.eclipse.che.api.workspace.server.spi.InfrastructureNamespaceService;
 import org.eclipse.che.api.workspace.server.spi.WorkspaceDao;
 import org.eclipse.che.commons.annotation.Nullable;
 import org.eclipse.che.commons.annotation.Traced;
@@ -84,14 +85,16 @@ public class LimitsCheckingWorkspaceManager extends WorkspaceManager {
       EnvironmentRamCalculator environmentRamCalculator,
       ResourceManager resourceManager,
       ResourcesLocks resourcesLocks,
-      DevfileIntegrityValidator devfileIntegrityValidator) {
+      DevfileIntegrityValidator devfileIntegrityValidator,
+      InfrastructureNamespaceService namespaceService) {
     super(
         workspaceDao,
         runtimes,
         eventService,
         accountManager,
         workspaceValidator,
-        devfileIntegrityValidator);
+        devfileIntegrityValidator,
+        namespaceService);
     this.environmentRamCalculator = environmentRamCalculator;
     this.maxRamPerEnvMB = "-1".equals(maxRamPerEnv) ? -1 : Size.parseSizeToMegabytes(maxRamPerEnv);
     this.resourceManager = resourceManager;

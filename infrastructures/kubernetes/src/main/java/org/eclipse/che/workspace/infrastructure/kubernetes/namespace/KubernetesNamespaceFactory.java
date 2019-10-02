@@ -30,7 +30,9 @@ import java.util.Optional;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import javax.inject.Named;
+import org.eclipse.che.api.core.model.workspace.InfrastructureNamespaceMetadata;
 import org.eclipse.che.api.workspace.server.spi.InfrastructureException;
+import org.eclipse.che.api.workspace.server.spi.InfrastructureNamespaceService;
 import org.eclipse.che.commons.annotation.Nullable;
 import org.eclipse.che.commons.env.EnvironmentContext;
 import org.eclipse.che.commons.subject.Subject;
@@ -45,7 +47,7 @@ import org.eclipse.che.workspace.infrastructure.kubernetes.api.shared.Kubernetes
  * @author Anton Korneta
  */
 @Singleton
-public class KubernetesNamespaceFactory {
+public class KubernetesNamespaceFactory implements InfrastructureNamespaceService {
 
   private static final Map<String, Function<Subject, String>> NAMESPACE_NAME_PLACEHOLDERS =
       new HashMap<>();
@@ -98,6 +100,22 @@ public class KubernetesNamespaceFactory {
    */
   public boolean isPredefined() {
     return isPredefined;
+  }
+
+  @Override
+  public List<InfrastructureNamespaceMetadata> getAvailableNamespaces()
+      throws InfrastructureException {
+    // dear lord, deliver us from type erasure and reify thy generics in JDK as it is in heaven...
+    //noinspection unchecked
+    return (List) list();
+  }
+
+  @Override
+  public String proposeName(String userDefinedName) {
+    // TODO check that the name conforms to the placeholders if any or that the user can actually
+    // create the namespace
+    // in question
+    return userDefinedName;
   }
 
   /** Returns list of k8s namespaces names where a user is able to run workspaces. */

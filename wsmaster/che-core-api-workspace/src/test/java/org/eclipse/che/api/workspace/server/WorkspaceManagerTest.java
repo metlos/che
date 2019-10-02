@@ -89,6 +89,7 @@ import org.eclipse.che.api.workspace.server.model.impl.WarningImpl;
 import org.eclipse.che.api.workspace.server.model.impl.WorkspaceConfigImpl;
 import org.eclipse.che.api.workspace.server.model.impl.WorkspaceImpl;
 import org.eclipse.che.api.workspace.server.model.impl.devfile.DevfileImpl;
+import org.eclipse.che.api.workspace.server.spi.InfrastructureNamespaceService;
 import org.eclipse.che.api.workspace.server.spi.WorkspaceDao;
 import org.eclipse.che.api.workspace.shared.dto.WorkspaceConfigDto;
 import org.eclipse.che.api.workspace.shared.dto.WorkspaceDto;
@@ -126,6 +127,7 @@ public class WorkspaceManagerTest {
   @Mock private WorkspaceValidator validator;
   @Mock private DevfileConverter devfileConverter;
   @Mock private DevfileIntegrityValidator devfileIntegrityValidator;
+  @Mock private InfrastructureNamespaceService namespaceService;
 
   @Captor private ArgumentCaptor<WorkspaceImpl> workspaceCaptor;
 
@@ -140,7 +142,8 @@ public class WorkspaceManagerTest {
             eventService,
             accountManager,
             validator,
-            devfileIntegrityValidator);
+            devfileIntegrityValidator,
+            namespaceService);
     lenient()
         .when(accountManager.getByName(NAMESPACE_1))
         .thenReturn(new AccountImpl("accountId", NAMESPACE_1, "test"));

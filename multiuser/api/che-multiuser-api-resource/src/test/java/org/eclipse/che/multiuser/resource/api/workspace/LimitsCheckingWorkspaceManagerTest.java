@@ -270,6 +270,7 @@ public class LimitsCheckingWorkspaceManagerTest {
               environmentRamCalculator,
               resourceManager,
               null,
+              null,
               null));
     }
 

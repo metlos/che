@@ -127,6 +127,14 @@ public final class Constants {
    */
   public static final String WORKSPACE_RUNTIMES_ID_ATTRIBUTE = "org.eclipse.che.runtimes_id";
 
+  /**
+   * The namespace/project to which the workspace should be deployed to. Note that this is not a
+   * prescription but merely a suggestion. The implementation might choose another namespace based
+   * on other configuration. Nevertheless this attribute is mandatory and will never change after a
+   * workspace has been persisted.
+   */
+  public static final String INFRASTRUCTURE_NAMESPACE_ATTRIBUTE = "infrastructureNamespace";
+
   public static final String COMMAND_PREVIEW_URL_ATTRIBUTE_NAME = "previewUrl";
   public static final String COMMAND_GOAL_ATTRIBUTE_NAME = "goal";
 

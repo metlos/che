@@ -11,14 +11,14 @@
  */
 package org.eclipse.che.workspace.infrastructure.kubernetes.api.shared;
 
-import java.util.Map;
+import org.eclipse.che.api.core.model.workspace.InfrastructureNamespaceMetadata;
 
 /**
  * Describes meta information about kubernetes namespace.
  *
  * @author Sergii Leshchenko
  */
-public interface KubernetesNamespaceMeta {
+public interface KubernetesNamespaceMeta extends InfrastructureNamespaceMetadata {
 
   /**
    * Attribute that shows if k8s namespace is configured as default. Possible values: true/false.
@@ -31,15 +31,4 @@ public interface KubernetesNamespaceMeta {
    * Terminating. Absent value indicates that namespace is not created yet.
    */
   String PHASE_ATTRIBUTE = "phase";
-
-  /**
-   * Returns the name of namespace.
-   *
-   * <p>Value may be not a name of existing namespace, but predicted name with placeholders inside,
-   * like <workspaceid>.
-   */
-  String getName();
-
-  /** Returns namespace attributes, which may contains additional info about it like description. */
-  Map<String, String> getAttributes();
 }

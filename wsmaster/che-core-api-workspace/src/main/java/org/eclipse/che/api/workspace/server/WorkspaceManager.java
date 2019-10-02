@@ -20,6 +20,7 @@ import static org.eclipse.che.api.core.model.workspace.WorkspaceStatus.STARTING;
 import static org.eclipse.che.api.core.model.workspace.WorkspaceStatus.STOPPED;
 import static org.eclipse.che.api.workspace.shared.Constants.CREATED_ATTRIBUTE_NAME;
 import static org.eclipse.che.api.workspace.shared.Constants.ERROR_MESSAGE_ATTRIBUTE_NAME;
+import static org.eclipse.che.api.workspace.shared.Constants.INFRASTRUCTURE_NAMESPACE_ATTRIBUTE;
 import static org.eclipse.che.api.workspace.shared.Constants.STOPPED_ABNORMALLY_ATTRIBUTE_NAME;
 import static org.eclipse.che.api.workspace.shared.Constants.STOPPED_ATTRIBUTE_NAME;
 import static org.eclipse.che.api.workspace.shared.Constants.UPDATED_ATTRIBUTE_NAME;
@@ -50,6 +51,8 @@ import org.eclipse.che.api.workspace.server.model.impl.WorkspaceConfigImpl;
 import org.eclipse.che.api.workspace.server.model.impl.WorkspaceImpl;
 import org.eclipse.che.api.workspace.server.model.impl.devfile.DevfileImpl;
 import org.eclipse.che.api.workspace.server.model.impl.devfile.MetadataImpl;
+import org.eclipse.che.api.workspace.server.spi.InfrastructureException;
+import org.eclipse.che.api.workspace.server.spi.InfrastructureNamespaceService;
 import org.eclipse.che.api.workspace.server.spi.WorkspaceDao;
 import org.eclipse.che.api.workspace.shared.Constants;
 import org.eclipse.che.api.workspace.shared.event.WorkspaceCreatedEvent;
@@ -81,6 +84,7 @@ public class WorkspaceManager {
   private final EventService eventService;
   private final WorkspaceValidator validator;
   private final DevfileIntegrityValidator devfileIntegrityValidator;
+  private final InfrastructureNamespaceService namespaceService;
 
   @Inject
   public WorkspaceManager(
@@ -89,13 +93,15 @@ public class WorkspaceManager {
       EventService eventService,
       AccountManager accountManager,
       WorkspaceValidator validator,
-      DevfileIntegrityValidator devfileIntegrityValidator) {
+      DevfileIntegrityValidator devfileIntegrityValidator,
+      InfrastructureNamespaceService namespaceService) {
     this.workspaceDao = workspaceDao;
     this.runtimes = runtimes;
     this.accountManager = accountManager;
     this.eventService = eventService;
     this.validator = validator;
     this.devfileIntegrityValidator = devfileIntegrityValidator;
+    this.namespaceService = namespaceService;
   }
 
   /**
@@ -312,7 +318,11 @@ public class WorkspaceManager {
     if (workspace.getDevfile() != null) {
       workspace.setDevfile(new DevfileImpl(update.getDevfile()));
     }
+    // make sure we ignore any attempt to change the namespace of the workspace
+    String namespaceAttr =
+        workspace.getAttributes().get(Constants.INFRASTRUCTURE_NAMESPACE_ATTRIBUTE);
     workspace.setAttributes(update.getAttributes());
+    workspace.getAttributes().put(INFRASTRUCTURE_NAMESPACE_ATTRIBUTE, namespaceAttr);
     workspace.getAttributes().put(UPDATED_ATTRIBUTE_NAME, Long.toString(currentTimeMillis()));
     workspace.setTemporary(update.isTemporary());
 
@@ -555,6 +565,13 @@ public class WorkspaceManager {
             .setStatus(STOPPED)
             .build();
     workspace.getAttributes().put(CREATED_ATTRIBUTE_NAME, Long.toString(currentTimeMillis()));
+
+    try {
+      String targetNamespace = namespaceService.proposeName(workspace.getAttributes().get(INFRASTRUCTURE_NAMESPACE_ATTRIBUTE));
+      workspace.getAttributes().put(INFRASTRUCTURE_NAMESPACE_ATTRIBUTE, targetNamespace);
+    } catch (InfrastructureException e) {
+      throw new ServerException("Failed to determine the infrastructure namespace for the workspace.", e);
+    }
 
     workspaceDao.create(workspace);
     LOG.info(
