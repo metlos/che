@@ -411,6 +411,7 @@ public class WorkspaceRuntimes {
     final String ownerId = EnvironmentContext.getCurrent().getSubject().getUserId();
     final RuntimeIdentity runtimeId = new RuntimeIdentityImpl(workspaceId, envName, ownerId);
     try {
+      LOG.info("Creating internal environment of workspace '{}'", workspaceId);
       InternalEnvironment internalEnv =
           createInternalEnvironment(
               config.getEnvironments().get(envName), config.getAttributes(), config.getCommands());

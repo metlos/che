@@ -12,15 +12,19 @@
 package org.eclipse.che.workspace.infrastructure.kubernetes.environment;
 
 import static java.lang.String.format;
+import static java.util.stream.Collectors.toList;
+import static java.util.stream.Collectors.toMap;
 import static org.eclipse.che.workspace.infrastructure.kubernetes.environment.PodMerger.DEPLOYMENT_NAME_LABEL;
 import static org.eclipse.che.workspace.infrastructure.kubernetes.namespace.KubernetesObjectUtil.setSelector;
 
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.collect.ImmutableMap;
 import io.fabric8.kubernetes.api.model.ConfigMap;
 import io.fabric8.kubernetes.api.model.Container;
 import io.fabric8.kubernetes.api.model.HasMetadata;
 import io.fabric8.kubernetes.api.model.PersistentVolumeClaim;
 import io.fabric8.kubernetes.api.model.Pod;
+import io.fabric8.kubernetes.api.model.PodTemplateSpec;
 import io.fabric8.kubernetes.api.model.Secret;
 import io.fabric8.kubernetes.api.model.Service;
 import io.fabric8.kubernetes.api.model.apps.Deployment;
@@ -49,6 +53,8 @@ import org.eclipse.che.workspace.infrastructure.kubernetes.Names;
 import org.eclipse.che.workspace.infrastructure.kubernetes.Warnings;
 import org.eclipse.che.workspace.infrastructure.kubernetes.environment.KubernetesEnvironment.PodData;
 import org.eclipse.che.workspace.infrastructure.kubernetes.util.Containers;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Parses {@link InternalEnvironment} into {@link KubernetesEnvironment}.
@@ -57,6 +63,8 @@ import org.eclipse.che.workspace.infrastructure.kubernetes.util.Containers;
  */
 public class KubernetesEnvironmentFactory
     extends InternalEnvironmentFactory<KubernetesEnvironment> {
+
+  private static final Logger LOG = LoggerFactory.getLogger(KubernetesEnvironmentFactory.class);
 
   private final KubernetesRecipeParser recipeParser;
   private final KubernetesEnvironmentValidator envValidator;
@@ -127,7 +135,58 @@ public class KubernetesEnvironmentFactory
     }
 
     if (deployments.size() + pods.size() > 1) {
+      LOG.info(
+          "Merging pods. Deployments pod names = [{}], Pod names = [{}]",
+          deployments
+              .entrySet()
+              .stream()
+              .collect(
+                  toMap(
+                      e -> e.getValue().getMetadata().getName(),
+                      e -> {
+                        PodTemplateSpec template = e.getValue().getSpec().getTemplate();
+                        String podName = template.getMetadata().getName();
+                        List<String> containerNames =
+                            template
+                                .getSpec()
+                                .getContainers()
+                                .stream()
+                                .map(Container::getName)
+                                .collect(Collectors.toList());
+                        return ImmutableMap.of(podName, containerNames);
+                      })),
+          pods.values()
+              .stream()
+              .collect(
+                  toMap(
+                      p -> p.getMetadata().getName(),
+                      p ->
+                          p.getSpec()
+                              .getContainers()
+                              .stream()
+                              .map(Container::getName)
+                              .collect(toList()))));
       mergePods(pods, deployments, services);
+      LOG.info(
+          "Merged pods into [{}]",
+          deployments
+              .entrySet()
+              .stream()
+              .collect(
+                  toMap(
+                      e -> e.getValue().getMetadata().getName(),
+                      e -> {
+                        PodTemplateSpec template = e.getValue().getSpec().getTemplate();
+                        String podName = template.getMetadata().getName();
+                        List<String> containerNames =
+                            template
+                                .getSpec()
+                                .getContainers()
+                                .stream()
+                                .map(Container::getName)
+                                .collect(Collectors.toList());
+                        return ImmutableMap.of(podName, containerNames);
+                      })));
     }
 
     if (isAnyIngressPresent) {

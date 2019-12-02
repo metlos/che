@@ -673,6 +673,7 @@ public class KubernetesInternalRuntime<E extends KubernetesEnvironment>
     final KubernetesEnvironment environment = getContext().getEnvironment();
     final Map<String, InternalMachineConfig> machineConfigs = environment.getMachines();
     final String workspaceId = getContext().getIdentity().getWorkspaceId();
+    LOG.info("Deploying pods of the environment in workspace '{}'", workspaceId);
     LOG.debug("Begin pods creation for workspace '{}'", workspaceId);
     for (Pod toCreate : environment.getPodsCopy().values()) {
       ObjectMeta toCreateMeta = toCreate.getMetadata();
@@ -680,6 +681,7 @@ public class KubernetesInternalRuntime<E extends KubernetesEnvironment>
       LOG.debug("Creating pod '{}' in workspace '{}'", toCreateMeta.getName(), workspaceId);
       storeStartingMachine(createdPod, toCreateMeta, machineConfigs, serverResolver);
     }
+    LOG.info("Deploying deployments of the environment in workspace '{}'", workspaceId);
     for (Deployment toCreate : environment.getDeploymentsCopy().values()) {
       PodTemplateSpec template = toCreate.getSpec().getTemplate();
       ObjectMeta toCreateMeta = toCreate.getMetadata();
@@ -701,8 +703,22 @@ public class KubernetesInternalRuntime<E extends KubernetesEnvironment>
       KubernetesServerResolver serverResolver)
       throws InfrastructureException {
     final String workspaceId = getContext().getIdentity().getWorkspaceId();
+
+    LOG.info(
+        "storeStartMachine: pod name = [{}], meta name = [{}], meta annotations = [{}],"
+            + " meta labels = [{}], machine config names = [{}]",
+        createdPod.getMetadata().getName(),
+        toCreateMeta.getName(),
+        toCreateMeta.getAnnotations(),
+        toCreateMeta.getLabels(),
+        machineConfigs.keySet());
+
     for (Container container : createdPod.getSpec().getContainers()) {
       String machineName = Names.machineName(toCreateMeta, container);
+      LOG.info(
+          "The machine name generated for container [{}] is [{}]",
+          container.getName(),
+          machineName);
 
       LOG.debug("Creating machine '{}' in workspace '{}'", machineName, workspaceId);
       machines.put(
